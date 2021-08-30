@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+package protocol;
+
+option go_package = "./protocol";
+
+
+service PriceService {
+  rpc SendPrice(Conn) returns(stream Price);
+  rpc SendPosNewPrice(Conn) returns (stream Price);
+  rpc ValidateSymbolPrice(Price) returns(ValidResponse);
+}
+
+message Price {
+
+  int64 uuid = 1;
+  string symbol = 2;
+  float bid = 3;
+  float ask = 4;
+}
+
+message Conn {
+  string message = 1;
+}
+
+message ValidResponse {
+  bool isValid = 1;
+}
