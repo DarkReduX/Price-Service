@@ -1,6 +1,5 @@
 package service
 
-//https://ably.com/blog/event-streaming-with-redis-and-golang
 import (
 	"context"
 	"encoding/json"
@@ -26,20 +25,22 @@ func (s *Price) Start() {
 
 	if err != nil {
 		log.WithFields(log.Fields{
-			"service": "price",
-			"error":   err,
-		}).Fatal("Failed to listen on port 8081")
+			"file":  "priceUpdateConsumer.go",
+			"func":  "Start()",
+			"error": err,
+		}).Fatal("Failed to listen on port 8081 while starting price service")
 	}
 
-	grpcServer := grpc.NewServer()
-
 	go s.GetUpdatePricesFromStream()
+
+	grpcServer := grpc.NewServer()
 	pb.RegisterPriceServiceServer(grpcServer, s)
 	if err = grpcServer.Serve(lis); err != nil {
 		log.WithFields(log.Fields{
-			"service": "price",
-			"error":   err,
-		}).Fatalf("Failed to server gRPC server over port 8081")
+			"file":  "priceUpdateConsumer.go",
+			"func":  "Start()",
+			"error": err,
+		}).Fatalf("Failed to server gRPC server over port 8081 while starting price service")
 	}
 }
 
@@ -48,10 +49,6 @@ func (s *Price) GetUpdatePricesFromStream() {
 		priceBytes := make([]byte, 1000)
 		price := data.SymbolPrice{}
 		if err := s.Repository.Client.RPop(context.Background(), "queueKey").Scan(&priceBytes); err != nil {
-			//log.WithFields(log.Fields{
-			//	"service": "price",
-			//	"error":   err,
-			//}).Error()
 			continue
 		}
 		if err := json.Unmarshal(priceBytes, &price); err != nil {
@@ -74,6 +71,7 @@ func (s *Price) GetUpdatePricesFromStream() {
 						Bid:    price.Bid,
 						Ask:    price.Ask,
 					})
+
 					if err != nil {
 						delete(s.posStreams, k)
 						return
@@ -102,6 +100,7 @@ func (s *Price) GetUpdatePricesFromStream() {
 			"service":      "price",
 			"price symbol": price.Symbol,
 		}).Info("Received price")
+
 		s.symbolsPrice[price.Symbol] = price
 	}
 }
@@ -110,11 +109,14 @@ func (s *Price) SendPrice(_ *pb.Conn, stream pb.PriceService_SendPriceServer) er
 	if s.streams == nil {
 		s.streams = make([]pb.PriceService_SendPriceServer, 0, 10)
 	}
+
 	log.WithFields(log.Fields{
 		"service": "price",
 		"stream":  "send price",
 	}).Info("Connected client to service")
+
 	s.streams = append(s.streams, stream)
+
 	for _, v := range s.symbolsPrice {
 		if err := stream.Send(&pb.Price{
 			Uuid:   v.Uuid,
@@ -125,6 +127,7 @@ func (s *Price) SendPrice(_ *pb.Conn, stream pb.PriceService_SendPriceServer) er
 			return err
 		}
 	}
+
 	for {
 		ch := make(chan error)
 		ch <- stream.Context().Err()
@@ -142,6 +145,7 @@ func (s *Price) ValidateSymbolPrice(_ context.Context, price *pb.Price) (*pb.Val
 		"service":      "price",
 		"price symbol": price.Symbol,
 	}).Info("Received request to validate symbol price")
+
 	if symbolPrice, ok := s.symbolsPrice[price.Symbol]; ok && symbolPrice.Uuid == price.Uuid && symbolPrice.Ask == price.Ask && symbolPrice.Bid == price.Bid {
 		return &pb.ValidResponse{IsValid: true}, nil
 	}
@@ -150,10 +154,12 @@ func (s *Price) ValidateSymbolPrice(_ context.Context, price *pb.Price) (*pb.Val
 
 func (s *Price) SendPosNewPrice(c *pb.Conn, stream pb.PriceService_SendPosNewPriceServer) error {
 	s.posStreams[c.Message] = stream
+
 	log.WithFields(log.Fields{
 		"service": "price",
 		"stream":  "send new pos price",
 	}).Info("Connected client to service")
+
 	for {
 		ch := make(chan error)
 		ch <- stream.Context().Err()
@@ -166,7 +172,7 @@ func (s *Price) SendPosNewPrice(c *pb.Conn, stream pb.PriceService_SendPosNewPri
 	}
 }
 
-func NewPrice(priceRepository *repository.PriceRepository) *Price {
+func NewPriceService(priceRepository *repository.PriceRepository) *Price {
 	return &Price{
 		Repository:                      priceRepository,
 		UnimplementedPriceServiceServer: pb.UnimplementedPriceServiceServer{},

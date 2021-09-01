@@ -17,16 +17,15 @@ func main() {
 	priceRepository := repository.NewPriceRepository(os.Getenv(envRedisURI), os.Getenv(envRedisUserName), os.Getenv(envRedisPassword), 0)
 	if priceRepository == nil {
 		log.WithFields(log.Fields{
-			"repository": "price",
-		}).Fatal("Couldn't create repository ")
+			"file": "main.go",
+		}).Fatal("Couldn't create price repository ")
 	}
 
-	priceSrv := service.NewPrice(priceRepository)
-
+	priceSrv := service.NewPriceService(priceRepository)
 	if priceSrv == nil {
 		log.WithFields(log.Fields{
-			"service": "price",
-		}).Fatal("Couldn't create service")
+			"file": "main.go",
+		}).Fatal("Couldn't create price service")
 	}
 
 	priceSrv.Start()

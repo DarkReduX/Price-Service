@@ -14,6 +14,7 @@ type PriceRepository struct {
 	Client *redis.Client
 }
 
+// SendNewPrice - send price to redis stream
 func (r PriceRepository) SendNewPrice(price data.SymbolPrice) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*20)
 	defer cancel()
